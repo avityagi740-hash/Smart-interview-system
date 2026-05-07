@@ -1,6 +1,5 @@
-# 🎤 SmartPrep v2 — AI Interview Practice System
+# 🎤 SmartPrep  — AI Interview Practice System
 
-Complete rebuild with fixed microphone, webcam confidence analysis, and IBM Watson STT support.
 
 ---
 
