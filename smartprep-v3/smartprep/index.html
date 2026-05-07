@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartPrep — AI Interview Coach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     CONFIG MODAL
+═══════════════════════════════════════════ -->
+<div id="configModal" class="modal-overlay active">
+  <div class="modal-card">
+    <div class="modal-logo">SP</div>
+    <h1 class="modal-title">SmartPrep</h1>
+    <p class="modal-sub">AI-Powered Interview Coach with Webcam Analysis</p>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('quick')">Quick Start</button>
+      <button class="tab" onclick="switchTab('watson')">IBM Watson STT</button>
+    </div>
+
+    <div id="quickTab" class="tab-content">
+      <div class="info-box">
+        <span class="info-icon">⚡</span>
+        <div>
+          <strong>Browser Speech Recognition</strong>
+          <p>Uses your browser's built-in speech recognition. Works immediately — no API key needed.</p>
+        </div>
+      </div>
+      <button class="btn-cta" onclick="startApp('browser')">
+        Start Practicing Now
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <div id="watsonTab" class="tab-content hidden">
+      <div class="field-group">
+        <label>IBM Watson API Key</label>
+        <input type="password" id="watsonKey" placeholder="Paste your IBM Watson API key..." />
+      </div>
+      <div class="field-group">
+        <label>Service Instance URL</label>
+        <input type="text" id="watsonUrl" placeholder="https://api.us-south.speech-to-text.watson.cloud.ibm.com/instances/..." />
+      </div>
+      <button class="btn-cta" onclick="startApp('watson')">
+        Connect Watson &amp; Start
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <p class="modal-note">🔒 All credentials stay in your browser. Audio goes directly to IBM — never stored.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN APP
+═══════════════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">SP</div>
+      <span class="brand-name">SmartPrep</span>
+      <div id="sttBadge" class="stt-badge">Browser STT</div>
+    </div>
+    <div class="header-actions">
+      <button class="hbtn hbtn-ai" onclick="openCustomInterview()">🤖 AI Interview</button>
+      <button class="hbtn" onclick="openHistory()">📋 History</button>
+      <button class="hbtn" onclick="openSettings()">⚙ Settings</button>
+    </div>
+  </header>
+
+  <!-- MAIN GRID -->
+  <main class="main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div class="left-col">
+
+      <!-- Domain Selector -->
+      <section class="card domain-card">
+        <div class="card-label">Select Domain</div>
+        <div class="domain-grid">
+          <button class="domain-btn active" data-domain="DSA" onclick="pickDomain(this)">
+            <span class="d-icon">🧮</span><span>DSA</span>
+          </button>
+          <button class="domain-btn" data-domain="HR" onclick="pickDomain(this)">
+            <span class="d-icon">🤝</span><span>HR</span>
+          </button>
+          <button class="domain-btn" data-domain="ML" onclick="pickDomain(this)">
+            <span class="d-icon">🤖</span><span>ML/AI</span>
+          </button>
+          <button class="domain-btn" data-domain="Web" onclick="pickDomain(this)">
+            <span class="d-icon">🌐</span><span>Web Dev</span>
+          </button>
+          <button class="domain-btn" data-domain="System" onclick="pickDomain(this)">
+            <span class="d-icon">🏗</span><span>System</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Question Panel -->
+      <section class="card question-card">
+        <div class="q-meta">
+          <span class="q-num" id="qNum">Q1</span>
+          <span class="q-diff" id="qDiff">Medium</span>
+          <button class="hint-btn" onclick="toggleHint()">💡 Hint</button>
+          <button class="next-btn" onclick="loadNextQuestion()">↻ Next</button>
+        </div>
+        <p class="q-text" id="qText">Loading question...</p>
+        <div class="hint-panel hidden" id="hintPanel"></div>
+      </section>
+
+      <!-- Transcript Panel -->
+      <section class="card transcript-card">
+        <div class="tc-header">
+          <span class="card-label">Your Answer</span>
+          <div class="tc-actions">
+            <span class="word-count" id="wordCount">0 words</span>
+            <button class="icon-btn" onclick="clearAnswer()" title="Clear">✕</button>
+          </div>
+        </div>
+        <div class="transcript-area" id="transcriptArea">
+          <p class="t-placeholder">Speak your answer — it will appear here in real-time...</p>
+        </div>
+      </section>
+
+      <!-- Evaluate Button -->
+      <button class="evaluate-btn" id="evalBtn" disabled onclick="runEvaluation()">
+        <span id="evalBtnText">Evaluate My Answer</span>
+        <div class="eval-shine"></div>
+      </button>
+
+    </div><!-- /left-col -->
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- Webcam + Mic Controls -->
+      <section class="card cam-card">
+        <div class="cam-top">
+          <span class="card-label">Live Analysis</span>
+          <div class="cam-controls">
+            <button class="cam-toggle-btn" id="camToggleBtn" onclick="toggleCamera()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              Camera Off
+            </button>
+          </div>
+        </div>
+
+        <!-- Webcam view -->
+        <div class="cam-viewport" id="camViewport">
+          <video id="webcamVideo" autoplay muted playsinline></video>
+          <canvas id="camCanvas"></canvas>
+          <div class="cam-overlay hidden" id="camOverlay">
+            <div class="cam-placeholder">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              <p>Camera Off</p>
+            </div>
+          </div>
+          <!-- Live confidence overlay -->
+          <div class="live-badges" id="liveBadges">
+            <div class="live-badge" id="eyeBadge">👁 <span id="eyeVal">--</span></div>
+            <div class="live-badge" id="postureBadge">🧍 <span id="postureVal">--</span></div>
+            <div class="live-badge" id="focusBadge">🎯 <span id="focusVal">--</span></div>
+          </div>
+        </div>
+
+        <!-- Webcam score bar -->
+        <div class="cam-score-bar" id="camScoreBar">
+          <span class="cs-label">Visual Confidence</span>
+          <div class="cs-bar-track">
+            <div class="cs-bar-fill" id="csBarFill" style="width:0%"></div>
+          </div>
+          <span class="cs-val" id="csVal">--</span>
+        </div>
+      </section>
+
+      <!-- Mic Panel -->
+      <section class="card mic-card">
+        <div class="mic-top">
+          <span class="card-label">Voice Input</span>
+          <div id="recTimer" class="rec-timer hidden">00:00</div>
+        </div>
+
+        <div class="mic-center">
+          <button class="mic-btn" id="micBtn" onclick="toggleMic()">
+            <div class="mic-rings">
+              <div class="ring r1"></div>
+              <div class="ring r2"></div>
+              <div class="ring r3"></div>
+            </div>
+            <svg class="mic-icon" id="micIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <p class="mic-label" id="micLabel">Click to speak</p>
+        </div>
+
+        <!-- Audio waveform -->
+        <div class="waveform-wrap">
+          <canvas id="waveCanvas" height="56"></canvas>
+        </div>
+
+        <!-- STT engine status -->
+        <div class="stt-status" id="sttStatus">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Ready</span>
+        </div>
+      </section>
+
+      <!-- Results Panel (hidden until evaluated) -->
+      <section class="card results-card hidden" id="resultsCard">
+        <div class="results-header">
+          <span class="card-label">Evaluation Results</span>
+          <div class="overall-pill" id="overallPill">--</div>
+        </div>
+
+        <div class="score-trio">
+          <div class="score-item">
+            <svg class="score-svg" viewBox="0 0 36 36">
+              <path class="sr-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="sr-fill" id="gRing" stroke-dasharray="0,100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+            <div class="score-num" id="gScore">0</div>
+            <div class="score-lbl">Grammar</div>
+          </div>
+          <div class="score-item">
+            <svg class="score-svg" viewBox="0 0 36 36">
+              <path class="sr-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="sr-fill" id="kRing" stroke-dasharray="0,100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+            <div class="score-num" id="kScore">0</div>
+            <div class="score-lbl">Keywords</div>
+          </div>
+          <div class="score-item">
+            <svg class="score-svg" viewBox="0 0 36 36">
+              <path class="sr-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="sr-fill" id="cRing" stroke-dasharray="0,100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+            <div class="score-num" id="cScore">0</div>
+            <div class="score-lbl">Confidence</div>
+          </div>
+        </div>
+
+        <!-- Visual confidence row -->
+        <div class="visual-row" id="visualRow">
+          <div class="score-item">
+            <svg class="score-svg" viewBox="0 0 36 36">
+              <path class="sr-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="sr-fill" id="vRing" stroke-dasharray="0,100" style="stroke:#06b6d4" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+            <div class="score-num" id="vScore">0</div>
+            <div class="score-lbl">Visual</div>
+          </div>
+          <div class="cam-breakdown" id="camBreakdown"></div>
+        </div>
+
+        <!-- Keywords -->
+        <div class="kw-section">
+          <div class="kw-row" id="kwFound"></div>
+          <div class="kw-row" id="kwMissed"></div>
+        </div>
+
+        <!-- Feedback -->
+        <div class="feedback-text" id="feedbackText"></div>
+
+        <div class="result-btns">
+          <button class="btn-primary" onclick="loadNextQuestion(); document.getElementById('resultsCard').classList.add('hidden')">Next Question</button>
+          <button class="btn-secondary" onclick="saveSession()">💾 Save</button>
+        </div>
+      </section>
+
+    </div><!-- /right-col -->
+  </main>
+
+  <!-- ═══════════════════════════════════════════
+       CUSTOM AI INTERVIEW MODAL
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="customInterviewModal">
+    <div class="modal-card ci-modal-card">
+      <div class="ci-modal-header">
+        <div class="ci-icon">🤖</div>
+        <div>
+          <h2 class="ci-title">Custom AI Interview</h2>
+          <p class="ci-sub">Enter your own questions — AI will interview you, ask follow-ups, and evaluate every answer</p>
+        </div>
+        <button class="icon-btn ci-close" onclick="closeCustomInterview()">✕</button>
+      </div>
+
+      <!-- STEP 1: Enter questions -->
+      <div id="ciStep1">
+        <div class="ci-anthro-note">
+          <span class="ci-note-icon">✨</span>
+          <span>Powered by Claude AI — extracts keywords, generates follow-up questions, gives detailed feedback</span>
+        </div>
+        <div class="field-group">
+          <label>Paste or type your interview questions (one per line)</label>
+          <textarea id="ciQuestionsInput" class="ci-textarea" rows="6"
+            placeholder="e.g.
+Explain the difference between TCP and UDP.
+What is polymorphism in OOP?
+How would you optimize a slow SQL query?
+Tell me about a project you are proud of."></textarea>
+        </div>
+        <div class="ci-options-row">
+          <div class="ci-option">
+            <label class="ci-opt-label">Difficulty Level</label>
+            <select id="ciDifficulty" class="ci-select">
+              <option value="Easy">Easy</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+          <div class="ci-option">
+            <label class="ci-opt-label">AI Follow-ups</label>
+            <select id="ciFollowups" class="ci-select">
+              <option value="0">None</option>
+              <option value="1" selected>1 per answer</option>
+              <option value="2">2 per answer</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group ci-api-group">
+          <label>Anthropic API Key <span class="ci-optional">(for AI evaluation + follow-ups)</span></label>
+          <input type="password" id="ciApiKey" placeholder="sk-ant-api03-..." />
+          <p class="ci-key-note">Get one free at <strong>console.anthropic.com</strong> — key stored in session only, never sent anywhere except Anthropic</p>
+        </div>
+        <div class="ci-modal-btns">
+          <button class="btn-secondary" onclick="closeCustomInterview()">Cancel</button>
+          <button class="btn-cta ci-start-btn" onclick="startCustomInterview()">
+            <span id="ciStartBtnText">Start AI Interview</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Processing -->
+      <div id="ciStep2" class="hidden">
+        <div class="ci-loading">
+          <div class="ci-spinner"></div>
+          <p id="ciLoadingText">Claude AI is preparing your session...</p>
+          <p class="ci-loading-sub">Extracting keywords and generating follow-up questions</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI SESSION BANNER (shown in main app when AI interview is active) -->
+  <div class="ai-session-banner hidden" id="aiSessionBanner">
+    <div class="ai-banner-left">
+      <div class="ai-badge">🤖 AI Interview Mode</div>
+      <span id="aiSessionProgress" class="ai-prog">Q1 of 1</span>
+    </div>
+    <div class="ai-banner-right">
+      <button class="hbtn hbtn-danger" onclick="endCustomSession()">✕ End Session</button>
+    </div>
+  </div>
+
+  <!-- AI CHAT PANEL (follow-up conversation) -->
+  <div class="ai-chat-panel hidden" id="aiChatPanel">
+    <div class="ai-chat-header">
+      <div class="ai-interviewer-tag">
+        <div class="ai-dot"></div>
+        <span class="card-label" style="margin:0">Claude AI Interviewer</span>
+      </div>
+    </div>
+    <div class="ai-chat-messages" id="aiChatMessages"></div>
+  </div>
+
+  <!-- AI EVALUATION CARD -->
+  <div class="card ai-eval-card hidden" id="aiEvalCard">
+    <div class="results-header">
+      <span class="card-label">AI Evaluation</span>
+      <div class="overall-pill" id="aiOverallPill">--</div>
+    </div>
+    <div class="ai-eval-body" id="aiEvalBody"></div>
+    <div class="result-btns" style="margin-top:14px">
+      <button class="btn-primary" id="aiNextBtn" onclick="aiNextQuestion()">Next Question →</button>
+      <button class="btn-secondary" onclick="saveAiSession()">💾 Save Result</button>
+    </div>
+  </div>
+
+    <!-- HISTORY DRAWER -->
+  <div class="drawer hidden" id="historyDrawer">
+    <div class="drawer-header">
+      <h3>Session History</h3>
+      <button class="icon-btn" onclick="closeHistory()">✕</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="src/questions.js"></script>
+<script src="src/evaluator.js"></script>
+<script src="src/webcam.js"></script>
+<script src="src/speech.js"></script>
+<script src="src/app.js"></script>
+<script src="src/ai.js"></script>
+</body>
+</html>
