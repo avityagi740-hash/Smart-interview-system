@@ -3,9 +3,6 @@
 
 ---
 
-## 🚀 Running in VS Code (2 minutes)
-
-### Recommended: Live Server Extension
 1. Open the `smartprep` folder in VS Code
 2. Install **Live Server** extension (by Ritwick Dey) if not already installed
 3. Right-click `index.html` → **Open with Live Server**
